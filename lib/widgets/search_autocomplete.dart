@@ -49,7 +49,6 @@ class _SearchAutocompleteState extends State<SearchAutocomplete> {
   }
 
   void _onFocusChanged() {
-    // Delay hiding the dropdown slightly so that click/tap events on suggestion items can fully complete first!
     Future.delayed(const Duration(milliseconds: 150), () {
       if (mounted) {
         setState(() {
@@ -110,8 +109,8 @@ class _SearchAutocompleteState extends State<SearchAutocomplete> {
                     color: ShuttleTheme.background,
                     borderRadius: BorderRadius.circular(ShuttleTheme.radiusFull),
                     border: Border.all(
-                      color: _focusNode.hasFocus 
-                          ? ShuttleTheme.neonTeal 
+                      color: _focusNode.hasFocus
+                          ? ShuttleTheme.neonTeal
                           : ShuttleTheme.neonTeal.withOpacity(0.3),
                       width: _focusNode.hasFocus ? 1.5 : 1.0,
                     ),
@@ -130,6 +129,10 @@ class _SearchAutocompleteState extends State<SearchAutocomplete> {
                         child: TextField(
                           controller: _searchController,
                           focusNode: _focusNode,
+                          onSubmitted: (val) {
+                            widget.onSearch(val);
+                            _focusNode.unfocus();
+                          },
                           style: ShuttleTheme.bodyMd.copyWith(color: ShuttleTheme.onBackground),
                           decoration: InputDecoration(
                             hintText: 'Search Player',
@@ -152,51 +155,9 @@ class _SearchAutocompleteState extends State<SearchAutocomplete> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              
-              // Search Button
-              SizedBox(
-                height: 40,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(ShuttleTheme.radiusFull),
-                    boxShadow: [
-                      BoxShadow(
-                        color: ShuttleTheme.neonTeal.withOpacity(0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      )
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ShuttleTheme.neonTeal,
-                      foregroundColor: const Color(0xFF06070C),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(ShuttleTheme.radiusFull),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                    ),
-                    onPressed: () {
-                      widget.onSearch(_searchController.text);
-                      _focusNode.unfocus();
-                    },
-                    child: Text(
-                      'SEARCH',
-                      style: ShuttleTheme.bodyMd.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: const Color(0xFF06070C),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
-          
-          // Autocomplete Dropdown Panel
+
           if (_showDropdown) ...[
             const SizedBox(height: 12),
             Material(
@@ -219,7 +180,7 @@ class _SearchAutocompleteState extends State<SearchAutocomplete> {
                     final suggestion = _filteredSuggestions[index];
                     final isKatSampleMatch = suggestion.toLowerCase() == 'kat' ||
                         _searchController.text.toLowerCase() == 'ka';
-                    
+
                     return InkWell(
                       onTap: () => _selectSuggestion(suggestion),
                       child: Container(
