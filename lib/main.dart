@@ -12,17 +12,19 @@ class ShuttleSummaryApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final shared = Uri.base.queryParameters['shared'] ?? '';
     return MaterialApp(
       title: 'ShuttleSummary - Badminton Schedule Summarizer',
       theme: ShuttleTheme.lightThemeData,
       debugShowCheckedModeBanner: false,
-      home: const ResponsiveFrameSelector(),
+      home: ResponsiveFrameSelector(initialSharedText: shared),
     );
   }
 }
 
 class ResponsiveFrameSelector extends StatefulWidget {
-  const ResponsiveFrameSelector({Key? key}) : super(key: key);
+  final String initialSharedText;
+  const ResponsiveFrameSelector({Key? key, this.initialSharedText = ''}) : super(key: key);
 
   @override
   State<ResponsiveFrameSelector> createState() => _ResponsiveFrameSelectorState();
@@ -37,7 +39,7 @@ class _ResponsiveFrameSelectorState extends State<ResponsiveFrameSelector> {
     final isDesktop = size.width > 600;
 
     if (!isDesktop || _forceFullScreen) {
-      return const MainView();
+      return MainView(initialSharedText: widget.initialSharedText);
     }
 
     return Scaffold(
@@ -206,7 +208,7 @@ class _ResponsiveFrameSelectorState extends State<ResponsiveFrameSelector> {
                 padding: const EdgeInsets.all(16.0), // Phone bezel thickness
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(24),
-                  child: const MainView(),
+                  child: MainView(initialSharedText: widget.initialSharedText),
                 ),
               ),
             ),

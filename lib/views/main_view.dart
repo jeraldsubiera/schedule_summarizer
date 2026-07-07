@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
+import '../utils/sharing.dart';
 import '../models/session_model.dart';
 import '../utils/parser_engine.dart';
 import '../theme.dart';
@@ -9,7 +11,8 @@ import '../widgets/schedule_card.dart';
 import '../widgets/bottom_nav_bar.dart';
 
 class MainView extends StatefulWidget {
-  const MainView({Key? key}) : super(key: key);
+  final String initialSharedText;
+  const MainView({Key? key, this.initialSharedText = ''}) : super(key: key);
 
   @override
   State<MainView> createState() => _MainViewState();
@@ -31,6 +34,36 @@ class _MainViewState extends State<MainView> {
   void initState() {
     super.initState();
     _loadPreferences();
+    _initSharingListener();
+    // Handle web share target via initialSharedText passed from main.dart
+    if (widget.initialSharedText.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handleSharedText(Uri.decodeComponent(widget.initialSharedText));
+      });
+    }
+  }
+
+  StreamSubscription<String>? _textIntentSub;
+
+  void _initSharingListener() {
+    // Handle cold-start share (when app launched via share)
+    Sharing.getInitialText().then((String? value) {
+      if (value != null && value.isNotEmpty) {
+        _handleSharedText(value);
+      }
+    }).catchError((_) {});
+
+    // Handle incoming share while app running
+    _textIntentSub = Sharing.getTextStream().listen((String value) {
+      if (mounted) _handleSharedText(value);
+    }, onError: (_) {});
+  }
+
+
+  @override
+  void dispose() {
+    _textIntentSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadPreferences() async {
@@ -91,6 +124,13 @@ class _MainViewState extends State<MainView> {
     );
   }
 
+  void _handleSharedText(String text) async {
+    // Clear any previous schedule first
+    _clearSchedule();
+    // Reuse existing process flow so UI behaves the same as manual processing
+    _processPastedSchedule(text, true);
+  }
+
   void _clearSchedule() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefPastedTextKey);
@@ -100,7 +140,11 @@ class _MainViewState extends State<MainView> {
     setState(() {
       _pastedText = '';
       _rememberSchedule = false;
-      _sessions = ParserEngine.defaultSessions;
+      // Clear parsed sessions so summarized schedule is empty
+      _sessions = [];
+      // Reset search and filters
+      _searchQuery = '';
+      _filterIncompleteRoster = false;
     });
 
     if (mounted) {
@@ -218,6 +262,41 @@ class _MainViewState extends State<MainView> {
         ),
       ),
       body: _buildBody(),
+      floatingActionButton: FloatingActionButton.extended(
+        icon: const Icon(Icons.bug_report_outlined, color: Colors.white),
+        label: const Text('Inject Share', style: TextStyle(color: Colors.white)),
+        backgroundColor: ShuttleTheme.neonPink,
+        onPressed: () {
+          final controller = TextEditingController();
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: ShuttleTheme.surfaceContainerLowest,
+              title: Text('Inject Shared Text', style: ShuttleTheme.headlineSm),
+              content: TextField(
+                controller: controller,
+                maxLines: 6,
+                decoration: const InputDecoration(hintText: 'Paste schedule text here...'),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('CANCEL', style: ShuttleTheme.bodyMd.copyWith(color: ShuttleTheme.neonTeal)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: ShuttleTheme.neonPink),
+                  onPressed: () {
+                    final text = controller.text.trim();
+                    if (text.isNotEmpty) _handleSharedText(text);
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('SEND', style: ShuttleTheme.bodyMd.copyWith(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentTab,
         onTap: (index) {

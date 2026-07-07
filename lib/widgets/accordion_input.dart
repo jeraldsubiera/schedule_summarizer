@@ -58,6 +58,18 @@ class _AccordionInputState extends State<AccordionInput> with SingleTickerProvid
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant AccordionInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the parent updates the initial text or remember flag, reflect it in the controller.
+    if (widget.initialText != oldWidget.initialText) {
+      _textController.text = widget.initialText;
+    }
+    if (widget.initialRemember != oldWidget.initialRemember) {
+      _remember = widget.initialRemember;
+    }
+  }
+
   void _toggleExpanded() {
     setState(() {
       _isExpanded = !_isExpanded;
